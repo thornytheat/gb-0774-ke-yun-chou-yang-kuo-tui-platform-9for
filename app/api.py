@@ -2,6 +2,8 @@ from flask import Blueprint,current_app,jsonify,request
 
 from app.errors import SurveyProblem
 from app.modules.ledger.service import archive
+from app.modules.merge.release import release_merge
+from app.modules.merge.service import issue
 from app.modules.release.service import release
 from app.pipeline import STAGES,run
 from app.source import sources
@@ -11,6 +13,10 @@ survey = Blueprint('survey',__name__,url_prefix='/api')
 
 def storage():
     return current_app.extensions['survey_archive']
+
+
+def merge_storage():
+    return current_app.extensions['merge_archive']
 
 
 @survey.route('/survey/<stage>',methods=['GET','POST'])
@@ -52,4 +58,34 @@ def rerun(key):
 def export(key):
     response=jsonify(release(*storage().read(key)))
     response.headers['Content-Disposition']=f'attachment; filename="survey-{key[:12]}.json"'
+    return response
+
+
+@survey.get('/merges')
+def list_merges():
+    return jsonify(merges=merge_storage().recent())
+
+
+@survey.post('/merges')
+def new_merge():
+    body=request.get_json(silent=True)
+    if not isinstance(body,dict) or set(body)!={'runs'} or not isinstance(body['runs'],list) \
+            or len(body['runs'])!=2 or not all(isinstance(key,str) for key in body['runs']):
+        raise SurveyProblem('BAD_INPUT','合档请求需提供两份站档编号 runs:[id_a,id_b]',422)
+    out=issue(merge_storage(),storage(),*body['runs'])
+    return jsonify(out), 200 if out['reused'] else 201
+
+
+@survey.get('/merges/<merge_id>')
+def get_merge(merge_id):
+    document,results,seal,detail=merge_storage().read(merge_id)
+    return jsonify(id=merge_id,document=document,stations=detail,seal=seal,
+                   balance=results['balance'],allocation=results['allocation'])
+
+
+@survey.get('/merges/<merge_id>/export')
+def export_merge(merge_id):
+    document,results,seal,_=merge_storage().read(merge_id)
+    response=jsonify(release_merge(storage(),document,results,seal))
+    response.headers['Content-Disposition']=f'attachment; filename="merge-{merge_id[:12]}.json"'
     return response

@@ -2,9 +2,10 @@ from fractions import Fraction
 
 from flask import Blueprint, render_template, request
 
-from app.api import storage
+from app.api import merge_storage, storage
 from app.config import CHOICES, SPEC
 from app.errors import SurveyProblem
+from app.modules.merge.release import release_merge
 from app.modules.release.service import release
 from app.pipeline import run
 from app.reasons import REASONS
@@ -26,9 +27,15 @@ def desk(tab='balance'):
         raise SurveyProblem('NO_STAGE','找不到业务页',404)
     sample = request.args.get('sample','dirty')
     key = request.args.get('run')
+    merge_id = request.args.get('merge')
     manifest = None
-    if key:
-        manifest, tables, result = storage().read(key)
+    merge_proof = None
+    if merge_id:
+        document, result_doc, seal, _detail = merge_storage().read(merge_id)
+        result = result_doc
+        if tab == 'release':
+            merge_proof = release_merge(storage(), document, result_doc, seal)
+    elif key:        manifest, tables, result = storage().read(key)
     else:
         tables = sources({'sample':sample})
         result = run(tables)
@@ -38,6 +45,11 @@ def desk(tab='balance'):
     proof = release(manifest,tables,result) if manifest and tab=='release' else None
     shifts = [float(abs(Fraction(row['shift_pp']))) for row in result['balance']['bias'].values() if row['shift_pp'] is not None]
     scale = max([5, *(5 * (int(value / 5) + 1) for value in shifts)])
-    return render_template('base.html',tab=tab,tabs=TABS,sample=sample,key=key,manifest=manifest,data=result,layer=layer,
+    return render_template('base.html',tab=tab,tabs=TABS,sample=sample,key=key,merge_id=merge_id,
+                           manifest=manifest,data=result,layer=layer,
+                           merge_document=document if merge_id else None,
+                           merge_seal=seal if merge_id else None,
                            spec=SPEC,choices=CHOICES,reasons=REASONS,decimal=decimal_text,maximum=scale,
-                           fraction=Fraction, proof=proof, recent=storage().recent() if tab=='archive' else [])
+                           fraction=Fraction, proof=proof, merge_proof=merge_proof,
+                           recent=storage().recent() if tab=='archive' else [],
+                           recent_merges=merge_storage().recent() if tab=='archive' else [])

@@ -1,1 +1,9 @@
 <div class="quality-grid detail"><section class="panel"><h3>本次计算档案</h3>{% if manifest %}<dl><dt>扩推摘要</dt><dd class="digest">{{ manifest.result_sha256 }}</dd><dt>处理耗时</dt><dd>{{ manifest.elapsed_ms }} ms</dd></dl>{% else %}<p>当前场次待归档。</p>{% endif %}<button id="save-run" data-sample="{{ sample }}" data-run="{{ key or '' }}" data-tab="archive">{{ '复算归档' if key else '归档场次' }}</button><output id="feedback" role="status"></output></section><section class="panel"><h3>近期扩推批次</h3><ul>{% for row in recent %}<li><a href="{{ url_for('workbench.desk',tab='archive',run=row.id) }}">{{ row.id[:12] }} · {{ row.created }}</a></li>{% else %}<li>暂无归档。</li>{% endfor %}</ul></section></div>
+<div class="quality-grid detail"><section class="panel"><h3>两站合档签发</h3><p class="hint">共有班次出票只计一份，两站独有答卷全部保留；跨站撞号各自裁决，同站重访照旧。</p>{% if recent|length >= 2 %}<form id="merge-form">
+<label>甲站站档
+<select id="merge-run-a" name="run_a">{% for row in recent %}<option value="{{ row.id }}" {{ 'selected' if loop.index==1 }}>{{ row.id[:12] }} · {{ row.created }}</option>{% endfor %}</select></label>
+<label>乙站站档
+<select id="merge-run-b" name="run_b">{% for row in recent %}<option value="{{ row.id }}" {{ 'selected' if loop.index==2 }}>{{ row.id[:12] }} · {{ row.created }}</option>{% endfor %}</select></label>
+<button type="submit" id="merge-submit">签发合档</button>
+</form>{% else %}<p>至少先归档两份站档，才能办理合档。</p>{% endif %}<output id="merge-feedback" role="status"></output></section><section class="panel"><h3>已签合档</h3><ul>{% for row in recent_merges %}<li><a href="{{ url_for('workbench.desk',tab='archive',merge=row.id) }}">{{ row.id[:12] }} · {{ row.created }} · {{ row.stations|length }} 站</a></li>{% else %}<li>暂无合档。</li>{% endfor %}</ul></section></div>
+{% if merge_id %}{% include 'merge_detail.html' %}{% endif %}

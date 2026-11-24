@@ -12,7 +12,8 @@
 2. 到班次与分层校验查票号 `00011` 改入枢纽，到非响应权重校准查基础权 3、校准后 50。
 3. 在扩推整数分配切换城北与枢纽，查看余数及补 1 的类别。
 4. 打开批次留档复跑，归档并复算。进入样本证据签发，下载带隔离行和规则版本的 JSON。
+5. 在批次留档复跑页选两份站档办理两站合档：共有班次出票只计一份、两站答卷统一改层，跨站撞号各算各的；在样本证据签发页下载合档证据。
 
-`GET /api/survey/<stage>` 执行样例阶段，阶段名见 [DEPTH](docs/DEPTH.md)。向同一路径 POST `{"tables":{"returns":"...","frame":"..."}}` 可复核自己的 CSV。`POST /api/runs` 提交同样的 `tables` 或 `{"sample":"dirty"}`。`GET /api/runs/<id>` 查档，`POST /api/runs/<id>/rerun` 复算，`GET /api/export/<id>` 领取证据。
+`GET /api/survey/<stage>` 执行样例阶段，阶段名见 [DEPTH](docs/DEPTH.md)。向同一路径 POST `{"tables":{"returns":"...","frame":"..."}}` 可复核自己的 CSV。`POST /api/runs` 提交同样的 `tables` 或 `{"sample":"dirty"}`。`GET /api/runs/<id>` 查档，`POST /api/runs/<id>/rerun` 复算，`GET /api/export/<id>` 领取证据。合档 `POST /api/merges` 提交 `{"runs":["<站档编号甲>","<站档编号乙>"]}`，`GET /api/merges/<id>` 查合档，`GET /api/merges/<id>/export` 领取合档证据。一份站档只能计入一份已签合档，签发失败不占站档、可重试。
 
 字段和计算规则详见 [数据字典](docs/DATA-DICTIONARY.md)。本机测试执行 `python -m pytest -q`。
